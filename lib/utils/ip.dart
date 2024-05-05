@@ -1,0 +1,1 @@
+var ip = "http://localhost/project_uts";
