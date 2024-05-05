@@ -83,6 +83,22 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
   bool isCari = true;
   List<Datum> filterSejarawan = [];
 
+  _PageListSejarawanState() {
+    txtCari.addListener(() {
+      if (txtCari.text.isEmpty) {
+        setState(() {
+          isCari = true;
+          txtCari.text = "";
+        });
+      } else {
+        setState(() {
+          isCari = false;
+          txtCari.text != "";
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,29 +118,29 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
         child: Column(
           children: [
             TextField(
-              controller: txtCari,
-              onChanged: (value) {
-                setState(() {
-                  // Call CreateFilterList() when search text changes
-                  isCari = true;
-                });
-              },
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: "Search",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: const BorderSide(color: Colors.lightBlue),
-                ),
-              ),
-            ),
-            if (isCari && txtCari.text.isEmpty) // Show original list when search text is empty
-              Expanded(
+          controller: txtCari,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search),
+            hintText: "Search",
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: const BorderSide(color: Colors.lightBlue)),
+          ),
+        ),
+          isCari
+              ? Expanded(
                 child: ListView.builder(
                   itemCount: listSejarawan.length,
                   itemBuilder: (context, index) {
                     Datum data = listSejarawan[index];
                     return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => PageDetailSejarawan(data)),
+                        );
+                      },
                       child: Padding(
                         padding: const EdgeInsets.all(6),
                         child: Card(
@@ -157,50 +173,47 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
                                               deleteSejarawan(data.id).then((value) {
                                                 if (value) {
                                                   setState(() {
-                                                    listSejarawan.removeAt(index);
+                                                    listSejarawan.removeAt(
+                                                        index);
                                                   });
-                                                  Navigator.push(
+                                                  Navigator
+                                                      .pushAndRemoveUntil(
                                                     context,
-                                                      MaterialPageRoute(
-                                                      builder: (context) => BeritaListScreen()
-                                                  )
+                                                    MaterialPageRoute(
+                                                        builder: ((context) =>
+                                                            SejarawanScreen())),
+                                                        (route) => false,
                                                   );
-                                                } else {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(const SnackBar(
-                                                    content: Text('Failed to delete data'),
-                                                  ));
                                                 }
                                               });
-                                            },
-                                            child: Text('Hapus'),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () {
+                                              },
+                                                child: Text('Hapus'),
+                                              ),
+                                              ElevatedButton(
+                                              onPressed: () {
                                               Navigator.of(context).pop();
+                                              },
+                                              child: Text('Batal'),
+                                              ),
+                                              ],
+                                              ),
+                                              );
                                             },
-                                            child: Text('Batal'),
+                                            icon: Icon(Icons.delete),
                                           ),
                                         ],
                                       ),
+                                    ),
+                                    ),
+                                    ),
                                     );
                                   },
-                                  icon: Icon(Icons.delete),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              )
-            else if (isCari) // Show filtered list when search text is not empty
-              CreateFilterList(),
-          ],
-        ),
-      ),
+                        )
+                              : CreateFilterList(),
+                      ],
+                    ),
+                    ),
       floatingActionButton: FloatingActionButton(
         child: Text(
           '+',
@@ -751,10 +764,10 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
 }
 
 // Page Detail Pegawai
-class PageDetailPegawai extends StatelessWidget {
+class PageDetailSejarawan extends StatelessWidget {
   final Datum? data;
 
-  const PageDetailPegawai(this.data, {super.key});
+  const PageDetailSejarawan(this.data, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -774,7 +787,7 @@ class PageDetailPegawai extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Berikut ini adalah detail Pegawai: ",
+                  "Berikut ini adalah detail Sejarawan: ",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -811,6 +824,13 @@ class PageDetailPegawai extends StatelessWidget {
                 ),
                 Text(
                   'Jenis Kelamin : ${data?.jenisKelamin}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Deskripsi : ${data?.deskripsi}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
