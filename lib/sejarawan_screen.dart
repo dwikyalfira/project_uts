@@ -25,11 +25,13 @@ class SejarawanScreen extends StatefulWidget {
 class _SejarawanScreenState extends State<SejarawanScreen> {
   bool isLoading = true;
   List<Datum> listSejarawan = [];
+  List<Datum> filteredSejarawan = [];
   TextEditingController txtCari = TextEditingController();
 
   Future<List<Datum>> getSejarawan() async {
     try {
-      http.Response response = await http.get(Uri.parse('$ip/listSejarawan.php'));
+      http.Response response = await http.get(
+          Uri.parse('$ip/listSejarawan.php'));
       if (response.statusCode == 200) {
         return modelListSejarawanFromJson(response.body).data;
       } else {
@@ -39,7 +41,8 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())));
       return []; // Return an empty list in case of an error
     }
   }
@@ -65,7 +68,8 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -78,26 +82,17 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
         isLoading = false;
       });
     });
-  }
 
-  bool isCari = true;
-  List<Datum> filterSejarawan = [];
-
-  _PageListSejarawanState() {
+    // Tambahkan listener untuk text field pencarian
     txtCari.addListener(() {
-      if (txtCari.text.isEmpty) {
-        setState(() {
-          isCari = true;
-          txtCari.text = "";
-        });
-      } else {
-        setState(() {
-          isCari = false;
-          txtCari.text != "";
-        });
-      }
+      setState(() {
+        // Update status pencarian sesuai dengan keberadaan teks pada TextField
+        isCari = txtCari.text.isNotEmpty;
+      });
     });
   }
+
+  bool isCari = false; // Set default value isCari menjadi false
 
   @override
   Widget build(BuildContext context) {
@@ -118,27 +113,30 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
         child: Column(
           children: [
             TextField(
-          controller: txtCari,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
-            hintText: "Search",
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: const BorderSide(color: Colors.lightBlue)),
-          ),
-        ),
-          isCari
-              ? Expanded(
+              controller: txtCari,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: "Search",
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: Colors.lightBlue)),
+              ),
+            ),
+            // Tampilkan daftar lengkap jika tidak ada pencarian atau tidak ada teks pencarian
+            if (!isCari || txtCari.text.isEmpty)
+              Expanded(
                 child: ListView.builder(
                   itemCount: listSejarawan.length,
                   itemBuilder: (context, index) {
                     Datum data = listSejarawan[index];
                     return GestureDetector(
                       onTap: () {
+                        // Navigate to PageDetailSejarawan
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => PageDetailSejarawan(data)),
+                            builder: (_) => PageDetailSejarawan(data),
+                          ),
                         );
                       },
                       child: Padding(
@@ -170,50 +168,58 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
                                         actions: [
                                           ElevatedButton(
                                             onPressed: () {
-                                              deleteSejarawan(data.id).then((value) {
+                                              deleteSejarawan(data.id)
+                                                  .then((value) {
                                                 if (value) {
                                                   setState(() {
                                                     listSejarawan.removeAt(
                                                         index);
                                                   });
-                                                  Navigator
-                                                      .pushAndRemoveUntil(
+                                                  Navigator.pop(
                                                     context,
                                                     MaterialPageRoute(
-                                                        builder: ((context) =>
-                                                            SejarawanScreen())),
-                                                        (route) => false,
+                                                        builder: (_) =>
+                                                            BeritaListScreen()),
                                                   );
+                                                } else {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                            'Failed to delete data'),
+                                                      ));
                                                 }
                                               });
-                                              },
-                                                child: Text('Hapus'),
-                                              ),
-                                              ElevatedButton(
-                                              onPressed: () {
-                                              Navigator.of(context).pop();
-                                              },
-                                              child: Text('Batal'),
-                                              ),
-                                              ],
-                                              ),
-                                              );
                                             },
-                                            icon: Icon(Icons.delete),
+                                            child: Text('Hapus'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: Text('Batal'),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    ),
-                                    ),
                                     );
                                   },
+                                  icon: Icon(Icons.delete),
                                 ),
-                        )
-                              : CreateFilterList(),
-                      ],
-                    ),
-                    ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            // Tampilkan hasil pencarian jika ada teks pencarian
+            else if (isCari)
+              CreateFilterList(),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         child: Text(
           '+',
@@ -231,11 +237,14 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
   }
 
   Widget CreateFilterList() {
-    filterSejarawan = listSejarawan
+    // Filter listSejarawan sesuai dengan teks pencarian
+    filteredSejarawan = listSejarawan
         .where((sejarawans) =>
-        sejarawans.nama.toLowerCase().contains(txtCari.text.toLowerCase()))
+        sejarawans.nama
+            .toLowerCase()
+            .contains(txtCari.text.toLowerCase()))
         .toList();
-    return HasilSearch(filterSejarawan);
+    return HasilSearch(filteredSejarawan);
   }
 
   Widget HasilSearch(List<Datum> filteredList) {
@@ -245,6 +254,15 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
         itemBuilder: (context, index) {
           Datum data = filteredList[index];
           return GestureDetector(
+            onTap: () {
+              // Navigate to PageDetailSejarawan
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PageDetailSejarawan(data),
+                ),
+              );
+            },
             child: Padding(
               padding: const EdgeInsets.all(10),
               child: Card(
@@ -281,14 +299,17 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
                                         setState(() {
                                           listSejarawan.removeAt(index);
                                         });
-                                        Navigator.pushAndRemoveUntil(
+                                        Navigator.push(
                                           context,
-                                          MaterialPageRoute(builder: ((context) => BeritaListScreen())),
-                                              (route) => false,
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  BeritaListScreen()),
                                         );
                                       } else {
                                         ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(content: Text('Failed to delete data')));
+                                            .showSnackBar(SnackBar(
+                                            content: Text(
+                                                'Failed to delete data')));
                                       }
                                     });
                                   },
@@ -317,6 +338,7 @@ class _SejarawanScreenState extends State<SejarawanScreen> {
     );
   }
 }
+
 
 //Page Insert sejarawan
 class PageAddSejarawan extends StatefulWidget {
@@ -359,11 +381,7 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
       if (response.statusCode == 200) {
         final data = modelAddSejarawanFromJson(response.body);
         if (data.message == "success") {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => BeritaListScreen()),
-                (route) => false,
-          );
+          Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -406,9 +424,12 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blueAccent,
-        title: Text('Tambah Sejarawan',
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Text(
+          'Tambah Sejarawan',
+          style: TextStyle(color: Colors.white, fontSize: 20),
         ),
+        backgroundColor: Color.fromARGB(255, 41, 83, 154),
       ),
       body: Padding(
         padding: EdgeInsets.all(10),
@@ -436,22 +457,6 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
               ElevatedButton(
                 onPressed: _pickImageFromGallery,
                 child: Text('Pilih Gambar'),
-              ),
-              SizedBox(height: 25),
-              // Button to submit form
-              ElevatedButton(
-                onPressed: () async {
-                  if (_imageFile != null && keyForm.currentState!.validate()) {
-                    await createSejarawan();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Mohon pilih gambar"),
-                      ),
-                    );
-                  }
-                },
-                child: Text("Simpan"),
               ),
 
               SizedBox(height: 8),
@@ -492,7 +497,7 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
               TextFormField(
                 controller: jenis_kelamin,
                 validator: (val) =>
-                val!.isEmpty ? "Email can't be empty" : null,
+                val!.isEmpty ? "Jenis Kelamin can't be empty" : null,
                 style: TextStyle(color: Colors.black.withOpacity(0.8)),
                 decoration: InputDecoration(
                   hintText: "Jenis Kelamin",
@@ -531,12 +536,19 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
                   height: 45,
                   color: Colors.white,
                   onPressed: () async {
-                    if (keyForm.currentState!.validate()) {
+                    if (_imageFile != null && keyForm.currentState!.validate()) {
                       await createSejarawan(); // Wait for createSejarawan to complete
-                      Navigator.pushAndRemoveUntil(
+                      Navigator.pop(
                         context,
-                        MaterialPageRoute(builder: (context) => BeritaListScreen()),
-                            (route) => false,
+                        MaterialPageRoute(
+                          builder: (context) => BeritaListScreen(),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Mohon pilih gambar"),
+                        ),
                       );
                     }
                   },
@@ -549,6 +561,7 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
                   ),
                 ),
 
+
               ),
             ],
           ),
@@ -558,30 +571,23 @@ class _PageAddSejarawanState extends State<PageAddSejarawan> {
   }
 }
 
-// Page updatw sejarawan
-class PageUpdateSejarawan extends StatefulWidget {
+class PageUpdateSejarawan extends StatelessWidget {
   final Datum data;
 
-  const PageUpdateSejarawan(this.data, {super.key});
+  const PageUpdateSejarawan(this.data, {Key? key}) : super(key: key);
 
   @override
-  State<PageUpdateSejarawan> createState() => _PageUpdateSejarawanState();
-}
+  Widget build(BuildContext context) {
+    TextEditingController id = TextEditingController();
+    TextEditingController nama = TextEditingController();
+    TextEditingController tanggal_lahir = TextEditingController();
+    TextEditingController asal = TextEditingController();
+    TextEditingController jenis_kelamin = TextEditingController();
+    TextEditingController deskripsi = TextEditingController();
+    GlobalKey<FormState> keyForm = GlobalKey<FormState>();
+    bool isLoading = false;
 
-class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
-  TextEditingController id = TextEditingController();
-  TextEditingController nama = TextEditingController();
-  TextEditingController tanggal_lahir = TextEditingController();
-  TextEditingController asal = TextEditingController();
-  TextEditingController jenis_kelamin = TextEditingController();
-  TextEditingController deskripsi = TextEditingController();
-  GlobalKey<FormState> keyForm = GlobalKey<FormState>();
-  // XFile? _imageFile; // Variable to store the selected image file
-
-  bool isLoading = false;
-
-  Future updateSejarawan() async {
-
+    Future updateSejarawan() async {
       final response = await http.post(
         Uri.parse("$ip/updateSejarawan.php"),
         body: {
@@ -591,28 +597,26 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
           "asal": asal.text,
           "jenis_kelamin": jenis_kelamin.text,
           "deskripsi": deskripsi.text,
-          // "foto": base64Image, // Include the base64 string of the image
         },
       );
       if (response.statusCode == 200) {
-          return true; // Return true indicating success
-        }
-          return false; // Return false indicating failure
+        return true; // Return true indicating success
+      }
+      return false; // Return false indicating failure
+    }
 
-  }
+    id.text = data.id;
+    nama.text = data.nama;
+    tanggal_lahir.text = data.tanggalLahir;
+    asal.text = data.asal;
+    jenis_kelamin.text = data.jenisKelamin;
+    deskripsi.text = data.deskripsi;
 
-  @override
-  Widget build(BuildContext context) {
-    id.text = widget.data.id;
-    nama.text = widget.data.nama;
-    tanggal_lahir.text = widget.data.tanggalLahir;
-    asal.text = widget.data.asal;
-    jenis_kelamin.text = widget.data.jenisKelamin;
-    deskripsi.text = widget.data.deskripsi;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blueAccent,
-        title: Text('Update Sejarawan',
+        title: Text(
+          'Update Sejarawan',
         ),
       ),
       body: Padding(
@@ -637,29 +641,6 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   fillColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-              //
-              // SizedBox(height: 8),
-              // ElevatedButton(
-              //   onPressed: _pickImageFromGallery,
-              //   child: Text('Pilih Gambar'),
-              // ),
-              // SizedBox(height: 25),
-              // // Button to submit form
-              // ElevatedButton(
-              //   onPressed: () async {
-              //     if (_imageFile != null && keyForm.currentState!.validate()) {
-              //       await updateSejarawan();
-              //     } else {
-              //       ScaffoldMessenger.of(context).showSnackBar(
-              //         SnackBar(
-              //           content: Text("Mohon pilih gambar"),
-              //         ),
-              //       );
-              //     }
-              //   },
-              //   child: Text("Simpan"),
-              // ),
-
               SizedBox(height: 8),
               TextFormField(
                 controller: tanggal_lahir,
@@ -676,7 +657,6 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   fillColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-
               SizedBox(height: 8),
               TextFormField(
                 controller: asal,
@@ -693,7 +673,6 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   fillColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-
               SizedBox(height: 8),
               TextFormField(
                 controller: jenis_kelamin,
@@ -710,7 +689,6 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   fillColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-
               SizedBox(height: 8),
               TextFormField(
                 controller: deskripsi,
@@ -727,7 +705,6 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   fillColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-
               SizedBox(height: 25),
               Center(
                 child: isLoading
@@ -739,12 +716,13 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
                   onPressed: () {
                     if (keyForm.currentState!.validate()) {
                       updateSejarawan();
-                    }
-                    Navigator.pushAndRemoveUntil(
+                      Navigator.pop(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => BeritaListScreen()),
-                            (route) => false);
+                          builder: (context) => BeritaListScreen(),
+                        ),
+                      );
+                    }
                   },
                   child: Text(
                     "SIMPAN",
@@ -763,7 +741,8 @@ class _PageUpdateSejarawanState extends State<PageUpdateSejarawan> {
   }
 }
 
-// Page Detail Pegawai
+
+// Page Detail Ssjarawan
 class PageDetailSejarawan extends StatelessWidget {
   final Datum? data;
 
@@ -773,9 +752,12 @@ class PageDetailSejarawan extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detail Sejarwan',
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Text(
+          'Detail Sejarawan',
+          style: TextStyle(color: Colors.white, fontSize: 20),
         ),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Color.fromARGB(255, 41, 83, 154),
       ),
       body: Padding(
         padding: const EdgeInsets.all(10),
@@ -783,57 +765,104 @@ class PageDetailSejarawan extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  "Berikut ini adalah detail Sejarawan: ",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // Profile picture
+                // Image.network('$ip/foto/${data?.foto}`'),
+                CircleAvatar(
+                  radius: 50,
+                  backgroundImage: NetworkImage(
+                    '$ip/foto/${data?.foto}`',
+                    scale: 10,
                   ),
                 ),
-                Text(
-                  'Nama : ${data?.nama}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                const SizedBox(height: 20),
+
+                // Details in cards
+                Card(
+                  child: SizedBox(
+                    width: double.infinity, // Set width to full screen
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center( // Center the text
+                        child: Text(
+                          'Nama : ${data?.nama}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  'Tanggal lahir : ${data?.tanggalLahir}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                Card(
+                  child: SizedBox(
+                    width: double.infinity, // Set width to full screen
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center( // Center the text
+                        child: Text(
+                          'Tanggal lahir : ${data?.tanggalLahir}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  'Asal : ${data?.asal}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                Card(
+                  child: SizedBox(
+                    width: double.infinity, // Set width to full screen
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center( // Center the text
+                        child: Text(
+                          'Asal : ${data?.asal}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  'Email : ${data?.deskripsi}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                Card(
+                  child: SizedBox(
+                    width: double.infinity, // Set width to full screen
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center( // Center the text
+                        child: Text(
+                          'Jenis Kelamin : ${data?.jenisKelamin}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  'Jenis Kelamin : ${data?.jenisKelamin}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Deskripsi : ${data?.deskripsi}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                Card(
+                  child: SizedBox(
+                    width: double.infinity, // Set width to full screen
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center( // Center the text
+                        child: Text(
+                          'Deskripsi : ${data?.deskripsi}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],

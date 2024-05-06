@@ -52,10 +52,7 @@ class _GaleryScreenState extends State<GaleryScreen> {
         automaticallyImplyLeading: false,
         title: Text(
           'Galeri',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 20),
         ),
         backgroundColor: Color.fromARGB(255, 41, 83, 154),
       ),
